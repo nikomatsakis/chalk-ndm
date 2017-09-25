@@ -166,6 +166,9 @@ pub struct ItemId {
     pub index: usize
 }
 
+/// Information about a type -- its name and what binders it has
+/// declared. For example, `struct Foo<'a, T>` would have the name
+/// `Foo` and two binders, one lifetime and one type.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct TypeKind {
     pub sort: TypeSort,

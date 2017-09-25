@@ -15,32 +15,81 @@ type TypeKinds = HashMap<ir::ItemId, ir::TypeKind>;
 type AssociatedTyInfos = HashMap<(ir::ItemId, ir::Identifier), AssociatedTyInfo>;
 type ParameterMap = HashMap<ir::ParameterKind<ir::Identifier>, usize>;
 
+/// The "Lowering Environment". Tracks various information about the
+/// chalk program used in creating the types from `ir`.
 #[derive(Clone, Debug)]
 struct Env<'k> {
+    /// Map from a type name to the internal `ItemId` that we assigned
+    /// for it.
     type_ids: &'k TypeIds,
+
+    /// Given an item-id, returns the "kind" of the type. In
+    /// particular, this indicates what type parameters it takes.
     type_kinds: &'k TypeKinds,
+
+    /// Given a pair (I, N) where I is the item-id of a trait and N is
+    /// the name of an associated type, maps to information about that
+    /// type -- for example, the id of the associated type and
+    /// information about its additional parameters.
+    ///
+    /// Example. If you have `trait Iterable { type Iter<'a> }`, then:
+    /// - The I from the key would be the `ItemId` of the `Iterable` trait.
+    /// - The N from the key would be the string `Iter`
+    /// - The value would declare one binder, the lifetime `'a`.
     associated_ty_infos: &'k AssociatedTyInfos,
+
+    /// Given the name of a parameter, returns its index from the list
+    /// of parameters currently in scope.
     parameter_map: ParameterMap,
 }
 
+/// Tracks information about an associated type declaration.
 #[derive(Debug, PartialEq, Eq)]
 struct AssociatedTyInfo {
+    /// `ItemId` of the associated type. Each associated type has its
+    /// own `ItemId`, distinct from the `ItemId` assigned to the
+    /// trait.
     id: ir::ItemId,
+
+    /// Parameters declared on the associated type.
+    ///
+    /// e.g. for `type Iter<'a>`, this would include one lifetime.
     addl_parameter_kinds: Vec<ir::ParameterKind<ir::Identifier>>,
 }
 
+/// Result from name lookup.
 enum NameLookup {
+    /// Refers to an item, like a struct or trait.
     Type(ir::ItemId),
+
+    /// Refers to a type or lifetime parameter. The index `usize` is
+    /// the debruijn index of that parameter.
     Parameter(usize),
 }
 
+/// Result from lifetime lookup.
 enum LifetimeLookup {
+    /// Refers to an in-scope lifetime parameter.
     Parameter(usize),
 }
 
 const SELF: &str = "Self";
 
 impl<'k> Env<'k> {
+    /// Creates a new `Env` with no parameters in scope.
+    fn new(type_ids: &'k TypeIds,
+           type_kinds: &'k TypeKinds,
+           associated_ty_infos: &'k AssociatedTyInfos)
+           -> Self {
+        Env {
+            type_ids,
+            type_kinds,
+            associated_ty_infos,
+            parameter_map: HashMap::new(),
+        }
+    }
+
+    /// Lookup a type name to see if it is in scope.
     fn lookup(&self, name: Identifier) -> Result<NameLookup> {
         if let Some(k) = self.parameter_map.get(&ir::ParameterKind::Ty(name.str)) {
             return Ok(NameLookup::Parameter(*k));
@@ -53,6 +102,7 @@ impl<'k> Env<'k> {
         bail!(ErrorKind::InvalidTypeName(name))
     }
 
+    /// Lookup a lifetime name to see if it is in scope.
     fn lookup_lifetime(&self, name: Identifier) -> Result<LifetimeLookup> {
         if let Some(k) = self.parameter_map.get(&ir::ParameterKind::Lifetime(name.str)) {
             return Ok(LifetimeLookup::Parameter(*k));
@@ -61,6 +111,7 @@ impl<'k> Env<'k> {
         bail!("invalid lifetime name: {:?}", name.str);
     }
 
+    /// Given the item-id of a type, returns its kind.
     fn type_kind(&self, id: ir::ItemId) -> &ir::TypeKind {
         &self.type_kinds[&id]
     }
@@ -82,6 +133,11 @@ impl<'k> Env<'k> {
         Env { parameter_map, ..*self }
     }
 
+    /// Creates a new environment E that extends this one by
+    /// introducing the binders `binders` into scope. Then invokes the
+    /// closure `op` with this environment. The value returned by that
+    /// closure is then wrapped in an `ir::Binders`, creating a final
+    /// closed term.
     fn in_binders<I, T, OP>(&self, binders: I, op: OP) -> Result<ir::Binders<T>>
         where I: IntoIterator<Item = ir::ParameterKind<ir::Identifier>>,
               I::IntoIter: ExactSizeIterator,
@@ -98,6 +154,9 @@ pub trait LowerProgram {
 }
 
 impl LowerProgram for Program {
+    /// Lowers the program AST into the internal chalk
+    /// `ir::Program`. This will convert the Rust types, traits, and
+    /// impls into Chalk's internal program clauses.
     fn lower(&self) -> Result<ir::Program> {
         let mut index = 0;
         let mut next_item_id = || -> ir::ItemId {
@@ -129,6 +188,7 @@ impl LowerProgram for Program {
             }
         }
 
+        /// Create the `type_ids` and `type-kinds` vectors.
         let mut type_ids = HashMap::new();
         let mut type_kinds = HashMap::new();
         for (item, &item_id) in self.items.iter().zip(&item_ids) {
@@ -141,17 +201,15 @@ impl LowerProgram for Program {
             type_kinds.insert(item_id, k);
         }
 
+        /// Accumulate the various `FooData` structs that describe
+        /// each thing in the user's program (e.g., structs, traits,
+        /// etc).
         let mut struct_data = HashMap::new();
         let mut trait_data = HashMap::new();
         let mut impl_data = HashMap::new();
         let mut associated_ty_data = HashMap::new();
         for (item, &item_id) in self.items.iter().zip(&item_ids) {
-            let empty_env = Env {
-                type_ids: &type_ids,
-                type_kinds: &type_kinds,
-                associated_ty_infos: &associated_ty_infos,
-                parameter_map: HashMap::new(),
-            };
+            let empty_env = Env::new(&type_ids, &type_kinds, &associated_ty_infos);
 
             match *item {
                 Item::StructDefn(ref d) => {
@@ -160,6 +218,9 @@ impl LowerProgram for Program {
                 Item::TraitDefn(ref d) => {
                     trait_data.insert(item_id, d.lower_trait(item_id, &empty_env)?);
 
+                    /// When we encounter a trait, also create
+                    /// `AssociatedTyDatum` elements for each of its
+                    /// associated types.
                     for defn in &d.assoc_ty_defns {
                         let info = &associated_ty_infos[&(item_id, defn.name.str)];
 
@@ -392,11 +453,11 @@ impl LowerWhereClause<ir::DomainGoal> for WhereClause {
             WhereClause::ProjectionEq { ref projection, ref ty  } => {
                 ir::DomainGoal::Normalize(ir::Normalize {
                     projection: projection.lower(env)?,
-                    ty: ty.lower(env)?,
+                    ty: ty.lower_ty(env)?,
                 })
             }
             WhereClause::TyWellFormed { ref ty } => {
-                ir::WellFormed::Ty(ty.lower(env)?).cast()
+                ir::WellFormed::Ty(ty.lower_ty(env)?).cast()
             }
             WhereClause::TraitRefWellFormed { ref trait_ref } => {
                 ir::WellFormed::TraitRef(trait_ref.lower(env)?).cast()
@@ -422,15 +483,15 @@ impl LowerWhereClause<ir::LeafGoal> for WhereClause {
                 g.cast()
             }
             WhereClause::TyWellFormed { ref ty } => {
-                ir::WellFormed::Ty(ty.lower(env)?).cast()
+                ir::WellFormed::Ty(ty.lower_ty(env)?).cast()
             }
             WhereClause::TraitRefWellFormed { ref trait_ref } => {
                 ir::WellFormed::TraitRef(trait_ref.lower(env)?).cast()
             }
             WhereClause::UnifyTys { ref a, ref b} => {
                 ir::EqGoal {
-                    a: ir::ParameterKind::Ty(a.lower(env)?),
-                    b: ir::ParameterKind::Ty(b.lower(env)?),
+                    a: ir::ParameterKind::Ty(a.lower_ty(env)?),
+                    b: ir::ParameterKind::Ty(b.lower_ty(env)?),
                 }.cast()
             }
             WhereClause::UnifyLifetimes { ref a, ref b } => {
@@ -460,7 +521,7 @@ impl LowerStructDefn for StructDefn {
                                 .collect()
             };
 
-            let fields: Result<_> = self.fields.iter().map(|f| f.ty.lower(env)).collect();
+            let fields: Result<_> = self.fields.iter().map(|f| f.ty.lower_ty(env)).collect();
             let where_clauses = self.lower_where_clauses(env)?;
 
             Ok(ir::StructDatumBound { self_ty, fields: fields?, where_clauses })
@@ -557,11 +618,11 @@ impl LowerProjectionTy for ProjectionTy {
 }
 
 trait LowerTy {
-    fn lower(&self, env: &Env) -> Result<ir::Ty>;
+    fn lower_ty(&self, env: &Env) -> Result<ir::Ty>;
 }
 
 impl LowerTy for Ty {
-    fn lower(&self, env: &Env) -> Result<ir::Ty> {
+    fn lower_ty(&self, env: &Env) -> Result<ir::Ty> {
         match *self {
             Ty::Id { name } => {
                 match env.lookup(name)? {
@@ -614,7 +675,7 @@ impl LowerTy for Ty {
                     env.introduce(lifetime_names
                                   .iter()
                                   .map(|id| ir::ParameterKind::Lifetime(id.str)));
-                let ty = ty.lower(&quantified_env)?;
+                let ty = ty.lower_ty(&quantified_env)?;
                 let quantified_ty = ir::QuantifiedTy { num_binders: lifetime_names.len(), ty };
                 Ok(ir::Ty::ForAll(Box::new(quantified_ty)))
             }
@@ -629,7 +690,7 @@ trait LowerParameter {
 impl LowerParameter for Parameter {
     fn lower(&self, env: &Env) -> Result<ir::Parameter> {
         match *self {
-            Parameter::Ty(ref t) => Ok(ir::ParameterKind::Ty(t.lower(env)?)),
+            Parameter::Ty(ref t) => Ok(ir::ParameterKind::Ty(t.lower_ty(env)?)),
             Parameter::Lifetime(ref l) => Ok(ir::ParameterKind::Lifetime(l.lower(env)?)),
         }
     }
@@ -690,7 +751,7 @@ impl LowerAssocTyValue for AssocTyValue {
         let info = &env.associated_ty_infos[&(trait_id, self.name.str)];
         let value = env.in_binders(self.all_parameters(), |env| {
             Ok(ir::AssociatedTyValueBound {
-                ty: self.value.lower(env)?,
+                ty: self.value.lower_ty(env)?,
                 where_clauses: self.where_clauses.lower(env)?,
             })
         })?;
@@ -749,13 +810,7 @@ impl LowerGoal<ir::Program> for Goal {
                    })
                    .collect();
 
-        let env = Env {
-            type_ids: &program.type_ids,
-            type_kinds: &program.type_kinds,
-            associated_ty_infos: &associated_ty_infos,
-            parameter_map: HashMap::new()
-        };
-
+        let env = Env::new(&program.type_ids, &program.type_kinds, &associated_ty_infos);
         self.lower(&env)
     }
 }
@@ -816,11 +871,12 @@ impl LowerQuantifiedGoal for Goal {
 }
 
 impl ir::Program {
+    /// Given an `ir::Program`, creates the **program environment**. This basically
+    /// compiles the Rust program into **program clauses**, which are essentially
+    /// Prolog-like rules of the form:
+    ///
+    ///       forall P0...Pn. Something :- Conditions
     pub fn environment(&self) -> ir::ProgramEnvironment {
-        // Construct the set of *clauses*; these are sort of a compiled form
-        // of the data above that always has the form:
-        //
-        //       forall P0...Pn. Something :- Conditions
         let mut program_clauses = vec![];
 
         program_clauses.extend(self.struct_data.values().flat_map(|d| d.to_program_clauses(self)));
