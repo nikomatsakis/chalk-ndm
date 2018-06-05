@@ -216,6 +216,14 @@ impl context::ResolventOps<SlgContext, SlgContext> for TruncatingInferenceTable 
         debug!("answer_table_goal={:?}", answer_table_goal);
         debug!("canonical_answer_subst={:?}", canonical_answer_subst);
 
+        // Any existential variables that exist in the canonical
+        // answer will be placed into the max local universe. When we
+        // unify with our existing query, they may get pushed down
+        // into a lower universe. The key point is that a query answer
+        // is true for *any* instantiation of its existential
+        // variables, and so we can pick the subuniverse that fits us.
+        let max_universe = self.infer.max_universe();
+
         // C' is now `answer`. No variables in commmon with G.
         let ConstrainedSubst {
             subst: answer_subst,
@@ -226,7 +234,11 @@ impl context::ResolventOps<SlgContext, SlgContext> for TruncatingInferenceTable 
             // to be true) winds up being true, and otherwise (if the
             // answer is false or unknown) it doesn't matter.
             constraints: answer_constraints,
-        } = self.infer.instantiate_canonical(&canonical_answer_subst);
+        } = self.infer.instantiate_in(
+            max_universe,
+            canonical_answer_subst.binders.iter().map(|pk| pk.map(|_| ())),
+            &canonical_answer_subst.value,
+        );
 
         let mut ex_clause = AnswerSubstitutor::substitute(
             &mut self.infer,
