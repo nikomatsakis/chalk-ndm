@@ -116,6 +116,7 @@ mod auto_traits;
 mod coherence_goals;
 mod coinduction;
 mod cycle;
+mod dyn_trait;
 mod implied_bounds;
 mod impls;
 mod negation;
