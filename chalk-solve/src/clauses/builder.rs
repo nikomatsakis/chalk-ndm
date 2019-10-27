@@ -1,8 +1,9 @@
 use crate::cast::{Cast, CastTo, Caster};
 use crate::RustIrDatabase;
+use chalk_engine::fallible::Fallible;
 use chalk_ir::family::{ChalkIr, HasTypeFamily, TypeFamily};
 use chalk_ir::fold::{
-    DefaultFreeVarFolder, DefaultInferenceFolder, DefaultPlaceholderFolder, DefaultTypeFolder, Fold,
+    DefaultFreeVarFolder, DefaultInferenceFolder, DefaultPlaceholderFolder, Fold, TypeFolder,
 };
 use chalk_ir::*;
 use chalk_rust_ir::*;
@@ -12,6 +13,10 @@ use std::marker::PhantomData;
 /// program clauses. It takes ownership of the output vector while it
 /// lasts, and offers methods like `push_clause` and so forth to
 /// append to it.
+///
+/// The clauses will be built in the target type family `TTF`. Any
+/// projection types found in the input will be converted into
+/// `ProjectionEq` relations.
 pub struct ClauseBuilder<'me, TTF: TypeFamily> {
     pub db: &'me dyn RustIrDatabase,
     clauses: &'me mut Vec<ProgramClause<TTF>>,
@@ -40,14 +45,13 @@ where
         self.push_clause(consequence, None::<Goal<_>>);
     }
 
-    fn import<T: Fold<ChalkIr, TTF>>(&mut self, value: &T) -> T::Result {
+    fn import<T: Fold<ChalkIr, TTF>>(
+        &mut self,
+        value: &T,
+        conditions: &mut Vec<Goal<TTF>>,
+    ) -> T::Result {
         value
-            .fold_with(
-                &mut Importer {
-                    phantom: PhantomData::<TTF>,
-                },
-                self.binders.len(),
-            )
+            .fold_with(&mut Importer { conditions }, self.binders.len())
             .unwrap()
     }
 
@@ -57,18 +61,18 @@ where
     /// binders will be whichever binders have been pushed (see `push_binders`).
     pub fn push_clause(
         &mut self,
-        consequence: impl CastTo<DomainGoal<ChalkIr>>,
-        conditions: impl IntoIterator<Item = impl CastTo<Goal<ChalkIr>>>,
+        in_consequence: impl CastTo<DomainGoal<ChalkIr>>,
+        in_conditions: impl IntoIterator<Item = impl CastTo<Goal<ChalkIr>>>,
     ) {
-        let consequence = self.import(&consequence.cast());
-        let conditions = conditions
-            .into_iter()
-            .casted()
-            .map(|c| self.import(&c))
-            .collect();
+        let mut out_conditions = vec![];
+        let out_consequence = self.import(&in_consequence.cast(), &mut out_conditions);
+        for in_condition in in_conditions.into_iter().casted() {
+            let out_condition = self.import(&in_condition, &mut out_conditions);
+            out_conditions.push(out_condition);
+        }
         let clause = ProgramClauseImplication {
-            consequence,
-            conditions,
+            consequence: out_consequence,
+            conditions: out_conditions,
         };
 
         if self.binders.len() == 0 {
@@ -139,25 +143,40 @@ where
     }
 }
 
-struct Importer<TTF: TypeFamily> {
-    phantom: PhantomData<TTF>,
+struct Importer<'me, TTF: TypeFamily> {
+    conditions: &'me mut Vec<Goal<TTF>>,
 }
 
-impl<TTF: TypeFamily> DefaultTypeFolder for Importer<TTF> {}
+impl<TTF: TypeFamily> TypeFolder<ChalkIr, TTF> for Importer<'_, TTF> {
+    fn fold_ty(&mut self, ty: &Ty<ChalkIr>, binders: usize) -> Fallible<Ty<TTF>> {
+        if false {
+            let _ = self.conditions.len();
+        }
+        fold::super_fold_ty(self, ty, binders)
+    }
 
-impl<TTF: TypeFamily> DefaultPlaceholderFolder for Importer<TTF> {
+    fn fold_lifetime(
+        &mut self,
+        lifetime: &Lifetime<ChalkIr>,
+        binders: usize,
+    ) -> Fallible<Lifetime<TTF>> {
+        fold::super_fold_lifetime(self, lifetime, binders)
+    }
+}
+
+impl<TTF: TypeFamily> DefaultPlaceholderFolder for Importer<'_, TTF> {
     fn forbid() -> bool {
         true
     }
 }
 
-impl<TTF: TypeFamily> DefaultFreeVarFolder for Importer<TTF> {
+impl<TTF: TypeFamily> DefaultFreeVarFolder for Importer<'_, TTF> {
     fn forbid() -> bool {
         true
     }
 }
 
-impl<TTF: TypeFamily> DefaultInferenceFolder for Importer<TTF> {
+impl<TTF: TypeFamily> DefaultInferenceFolder for Importer<'_, TTF> {
     fn forbid() -> bool {
         true
     }
