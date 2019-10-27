@@ -1,7 +1,9 @@
 use crate::cast::{Cast, CastTo, Caster};
 use crate::RustIrDatabase;
-use chalk_ir::family::{ChalkIr, HasTypeFamily};
-use chalk_ir::fold::Fold;
+use chalk_ir::family::{ChalkIr, HasTypeFamily, TypeFamily};
+use chalk_ir::fold::{
+    DefaultFreeVarFolder, DefaultInferenceFolder, DefaultPlaceholderFolder, DefaultTypeFolder, Fold,
+};
 use chalk_ir::*;
 use chalk_rust_ir::*;
 use std::marker::PhantomData;
@@ -10,15 +12,18 @@ use std::marker::PhantomData;
 /// program clauses. It takes ownership of the output vector while it
 /// lasts, and offers methods like `push_clause` and so forth to
 /// append to it.
-pub struct ClauseBuilder<'me> {
+pub struct ClauseBuilder<'me, TTF: TypeFamily> {
     pub db: &'me dyn RustIrDatabase,
-    clauses: &'me mut Vec<ProgramClause<ChalkIr>>,
+    clauses: &'me mut Vec<ProgramClause<TTF>>,
     binders: Vec<ParameterKind<()>>,
     parameters: Vec<Parameter<ChalkIr>>,
 }
 
-impl<'me> ClauseBuilder<'me> {
-    pub fn new(db: &'me dyn RustIrDatabase, clauses: &'me mut Vec<ProgramClause<ChalkIr>>) -> Self {
+impl<'me, TTF> ClauseBuilder<'me, TTF>
+where
+    TTF: TypeFamily,
+{
+    pub fn new(db: &'me dyn RustIrDatabase, clauses: &'me mut Vec<ProgramClause<TTF>>) -> Self {
         Self {
             db,
             clauses,
@@ -35,6 +40,17 @@ impl<'me> ClauseBuilder<'me> {
         self.push_clause(consequence, None::<Goal<_>>);
     }
 
+    fn import<T: Fold<ChalkIr, TTF>>(&mut self, value: &T) -> T::Result {
+        value
+            .fold_with(
+                &mut Importer {
+                    phantom: PhantomData::<TTF>,
+                },
+                self.binders.len(),
+            )
+            .unwrap()
+    }
+
     /// Pushes a clause `forall<..> { consequence :- conditions }`
     /// into the set of program clauses, meaning that `consequence`
     /// can be proven if `conditions` are all true.  The `forall<..>`
@@ -44,9 +60,15 @@ impl<'me> ClauseBuilder<'me> {
         consequence: impl CastTo<DomainGoal<ChalkIr>>,
         conditions: impl IntoIterator<Item = impl CastTo<Goal<ChalkIr>>>,
     ) {
+        let consequence = self.import(&consequence.cast());
+        let conditions = conditions
+            .into_iter()
+            .casted()
+            .map(|c| self.import(&c))
+            .collect();
         let clause = ProgramClauseImplication {
-            consequence: consequence.cast(),
-            conditions: conditions.into_iter().casted().collect(),
+            consequence,
+            conditions,
         };
 
         if self.binders.len() == 0 {
@@ -114,5 +136,29 @@ impl<'me> ClauseBuilder<'me> {
                 .clone();
             op(this, ty)
         });
+    }
+}
+
+struct Importer<TTF: TypeFamily> {
+    phantom: PhantomData<TTF>,
+}
+
+impl<TTF: TypeFamily> DefaultTypeFolder for Importer<TTF> {}
+
+impl<TTF: TypeFamily> DefaultPlaceholderFolder for Importer<TTF> {
+    fn forbid() -> bool {
+        true
+    }
+}
+
+impl<TTF: TypeFamily> DefaultFreeVarFolder for Importer<TTF> {
+    fn forbid() -> bool {
+        true
+    }
+}
+
+impl<TTF: TypeFamily> DefaultInferenceFolder for Importer<TTF> {
+    fn forbid() -> bool {
+        true
     }
 }

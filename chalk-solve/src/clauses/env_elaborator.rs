@@ -7,7 +7,7 @@ use crate::ProgramClause;
 use crate::RustIrDatabase;
 use crate::Ty;
 use crate::TyData;
-use chalk_ir::family::ChalkIr;
+use chalk_ir::family::{ChalkIr, TypeFamily};
 use chalk_ir::ProjectionTy;
 use chalk_ir::TypeName;
 use rustc_hash::FxHashSet;
@@ -31,13 +31,16 @@ pub(super) fn elaborate_env_clauses(
     out.extend(this_round);
 }
 
-struct EnvElaborator<'me> {
+struct EnvElaborator<'me, TTF: TypeFamily> {
     db: &'me dyn RustIrDatabase,
-    builder: ClauseBuilder<'me>,
+    builder: ClauseBuilder<'me, TTF>,
 }
 
-impl<'me> EnvElaborator<'me> {
-    fn new(db: &'me dyn RustIrDatabase, out: &'me mut Vec<ProgramClause<ChalkIr>>) -> Self {
+impl<'me, TTF> EnvElaborator<'me, TTF>
+where
+    TTF: TypeFamily,
+{
+    fn new(db: &'me dyn RustIrDatabase, out: &'me mut Vec<ProgramClause<TTF>>) -> Self {
         EnvElaborator {
             db,
             builder: ClauseBuilder::new(db, out),

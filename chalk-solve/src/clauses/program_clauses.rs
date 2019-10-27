@@ -1,6 +1,7 @@
 use crate::clauses::builder::ClauseBuilder;
 use crate::split::Split;
 use chalk_ir::cast::{Cast, Caster};
+use chalk_ir::family::TypeFamily;
 use chalk_ir::*;
 use chalk_rust_ir::*;
 use std::iter;
@@ -9,7 +10,7 @@ use std::iter;
 /// or struct definition) into its associated "program clauses" --
 /// that is, into the lowered, logical rules that it defines.
 pub trait ToProgramClauses {
-    fn to_program_clauses(&self, builder: &mut ClauseBuilder<'_>);
+    fn to_program_clauses(&self, builder: &mut ClauseBuilder<'_, impl TypeFamily>);
 }
 
 impl ToProgramClauses for ImplDatum {
@@ -26,7 +27,7 @@ impl ToProgramClauses for ImplDatum {
     /// generate nothing -- this is just a way to *opt out* from the
     /// default auto trait impls, it doesn't have any positive effect
     /// on its own.
-    fn to_program_clauses(&self, builder: &mut ClauseBuilder<'_>) {
+    fn to_program_clauses(&self, builder: &mut ClauseBuilder<'_, impl TypeFamily>) {
         if self.is_positive() {
             let binders = self.binders.map_ref(|b| (&b.trait_ref, &b.where_clauses));
             builder.push_binders(&binders, |builder, (trait_ref, where_clauses)| {
@@ -62,7 +63,7 @@ impl ToProgramClauses for AssociatedTyValue {
     ///         Implemented(Iter<'a, T>: 'a).   // (2)
     /// }
     /// ```
-    fn to_program_clauses(&self, builder: &mut ClauseBuilder<'_>) {
+    fn to_program_clauses(&self, builder: &mut ClauseBuilder<'_, impl TypeFamily>) {
         let impl_datum = builder.db.impl_datum(self.impl_id);
         let associated_ty = builder.db.associated_ty_data(self.associated_ty_id);
 
@@ -165,7 +166,7 @@ impl ToProgramClauses for StructDatum {
     /// forall<T> { DownstreamType(Box<T>) :- DownstreamType(T). }
     /// ```
     ///
-    fn to_program_clauses(&self, builder: &mut ClauseBuilder<'_>) {
+    fn to_program_clauses(&self, builder: &mut ClauseBuilder<'_, impl TypeFamily>) {
         debug_heading!("StructDatum::to_program_clauses(self={:?})", self);
 
         let binders = self.binders.map_ref(|b| &b.where_clauses);
@@ -383,7 +384,7 @@ impl ToProgramClauses for TraitDatum {
     /// To implement fundamental traits, we simply just do not add the rule above that allows
     /// upstream types to implement upstream traits. Fundamental traits are not allowed to
     /// compatibly do that.
-    fn to_program_clauses(&self, builder: &mut ClauseBuilder<'_>) {
+    fn to_program_clauses(&self, builder: &mut ClauseBuilder<'_, impl TypeFamily>) {
         let binders = self.binders.map_ref(|b| &b.where_clauses);
         builder.push_binders(&binders, |builder, where_clauses| {
             let parameters = builder.placeholders_in_scope().to_vec();
@@ -564,7 +565,7 @@ impl ToProgramClauses for AssociatedTyDatum {
     ///     FromEnv(Self: Foo) :- FromEnv((Foo::Assoc)<Self, 'a,T>).
     /// }
     /// ```
-    fn to_program_clauses(&self, builder: &mut ClauseBuilder<'_>) {
+    fn to_program_clauses(&self, builder: &mut ClauseBuilder<'_, impl TypeFamily>) {
         let binders = self.binders.map_ref(|b| (&b.where_clauses, &b.bounds));
         builder.push_binders(&binders, |builder, (where_clauses, bounds)| {
             let parameters = builder.placeholders_in_scope().to_vec();
