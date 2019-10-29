@@ -11,7 +11,6 @@ use rustc_hash::FxHashSet;
 
 pub mod builder;
 mod env_elaborator;
-pub mod importer;
 pub mod program_clauses;
 
 /// For auto-traits, we generate a default rule for every struct,
