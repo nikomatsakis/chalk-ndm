@@ -191,6 +191,21 @@ impl<TTF: TypeFamily> TypeFolder<ChalkIr, TTF> for Importer<'_, TTF> {
                 let new_index = self.binders.len();
                 self.binders.push(ParameterKind::Ty(()));
                 let new_ty: Ty<TTF> = TyData::BoundVar(new_index).intern();
+                // XXX -- This is bogus! Consider
+                //
+                // ```
+                // Implemented(T: Foo<for<'a> Fn(<T as Iteratable>::Item<'a>))
+                // ```
+                //
+                // you can't convert that projection into the form we
+                // are trying to use, duh!
+                //
+                // Kind of makes sense, since we are pushing here
+                // towards eager normalization, and indeed it has the
+                // same flaws it ever had.
+                //
+                // Remind me, why did you want to do this lowering?
+                // Just efficiency? (Yes, I think so.)
                 let projection_eq = ProjectionEq {
                     projection: projection.shifted_out(binders).unwrap(),
                     ty: new_ty.clone(),
