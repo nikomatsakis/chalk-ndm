@@ -239,6 +239,9 @@ fn program_clauses_that_could_match<TF: TypeFamily>(
             db.associated_ty_data(projection_predicate.projection.associated_ty_id)
                 .to_program_clauses(builder);
         }
+        DomainGoal::Holds(WhereClause::Outlives(_outlives)) => {
+            // FIXME(ndm)
+        }
         DomainGoal::WellFormed(WellFormed::Trait(trait_predicate)) => {
             db.trait_datum(trait_predicate.trait_id)
                 .to_program_clauses(builder);

@@ -22,7 +22,8 @@ impl<TF: TypeFamily> IsCoinductive<TF> for Goal<TF> {
                     db.trait_datum(tr.trait_id).is_auto_trait()
                         || db.trait_datum(tr.trait_id).is_coinductive_trait()
                 }
-                WhereClause::ProjectionEq(..) => false,
+                WhereClause::ProjectionEq(..) |
+                WhereClause::Outlives(..) => false,
             },
             Goal::Leaf(LeafGoal::DomainGoal(DomainGoal::WellFormed(WellFormed::Trait(..)))) => true,
             Goal::Quantified(QuantifierKind::ForAll, goal) => goal.value.is_coinductive(db),

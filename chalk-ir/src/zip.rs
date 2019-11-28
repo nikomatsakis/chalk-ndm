@@ -202,6 +202,10 @@ struct_zip!(impl[TF: TypeFamily] Zip<TF> for ProgramClauseImplication<TF> {
     consequence,
     conditions
 });
+struct_zip!(impl[TF: TypeFamily] Zip<TF> for Outlives<TF> {
+    a,
+    b,
+});
 
 impl<TF: TypeFamily> Zip<TF> for Environment<TF> {
     fn zip_with<Z: Zipper<TF>>(zipper: &mut Z, a: &Self, b: &Self) -> Fallible<()> {
@@ -236,7 +240,7 @@ macro_rules! enum_zip {
 
 enum_zip!(impl<TF> for WellFormed<TF> { Trait, Ty });
 enum_zip!(impl<TF> for FromEnv<TF> { Trait, Ty });
-enum_zip!(impl<TF> for WhereClause<TF> { Implemented, ProjectionEq });
+enum_zip!(impl<TF> for WhereClause<TF> { Implemented, ProjectionEq, Outlives });
 enum_zip!(impl<TF> for DomainGoal<TF> {
     Holds,
     WellFormed,

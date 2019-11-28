@@ -217,7 +217,14 @@ impl<TF: TypeFamily> Debug for WhereClause<TF> {
         match self {
             WhereClause::Implemented(tr) => write!(fmt, "Implemented({:?})", tr.with_colon()),
             WhereClause::ProjectionEq(p) => write!(fmt, "{:?}", p),
+            WhereClause::Outlives(o) => write!(fmt, "{:?}", o),
         }
+    }
+}
+
+impl<TF: TypeFamily> Debug for Outlives<TF> {
+    fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
+        write!(fmt, "{:?}: {:?}", self.a, self.b)
     }
 }
 

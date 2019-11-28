@@ -626,6 +626,13 @@ impl<TF: TypeFamily> TraitRef<TF> {
 pub enum WhereClause<TF: TypeFamily> {
     Implemented(TraitRef<TF>),
     ProjectionEq(ProjectionEq<TF>),
+    Outlives(Outlives<TF>),
+}
+
+#[derive(Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Fold, HasTypeFamily)]
+pub struct Outlives<TF: TypeFamily> {
+    pub a: Lifetime<TF>,
+    pub b: Lifetime<TF>,
 }
 
 #[derive(Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Fold, HasTypeFamily)]
@@ -771,7 +778,8 @@ impl<TF: TypeFamily> WhereClause<TF> {
     pub fn into_from_env_goal(self) -> DomainGoal<TF> {
         match self {
             WhereClause::Implemented(trait_ref) => FromEnv::Trait(trait_ref).cast(),
-            wc => wc.cast(),
+            WhereClause::ProjectionEq(_) => self.cast(),
+            WhereClause::Outlives(_) => self.cast(), // FIXME(ndm)
         }
     }
 }

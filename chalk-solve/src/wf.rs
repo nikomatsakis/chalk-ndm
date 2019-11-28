@@ -114,7 +114,21 @@ impl<TF: TypeFamily> FoldInputTypes for WhereClause<TF> {
         match self {
             WhereClause::Implemented(tr) => tr.fold(accumulator),
             WhereClause::ProjectionEq(p) => p.fold(accumulator),
+            WhereClause::Outlives(o) => o.fold(accumulator),
         }
+    }
+}
+
+impl<TF: TypeFamily> FoldInputTypes for Outlives<TF> {
+    fn fold(&self, accumulator: &mut Vec<Ty<TF>>) {
+        let Outlives { a, b } = self;
+        a.fold(accumulator);
+        b.fold(accumulator);
+    }
+}
+
+impl<TF: TypeFamily> FoldInputTypes for Lifetime<TF> {
+    fn fold(&self, _accumulator: &mut Vec<Ty<TF>>) {
     }
 }
 
