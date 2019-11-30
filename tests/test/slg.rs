@@ -476,7 +476,11 @@ fn basic_region_constraint_from_positive_impl() {
                             constraints: [
                                 InEnvironment {
                                     environment: Env([]),
-                                    goal: '!1_1 == '!1_0
+                                    goal: '!1_1: '!1_0
+                                },
+                                InEnvironment {
+                                    environment: Env([]),
+                                    goal: '!1_0: '!1_1
                                 }
                             ]
                         },

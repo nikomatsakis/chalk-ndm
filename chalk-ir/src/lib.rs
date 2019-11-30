@@ -1117,7 +1117,7 @@ pub enum QuantifierKind {
 /// checking in the compiler.
 #[derive(Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Fold, HasTypeFamily)]
 pub enum Constraint<TF: TypeFamily> {
-    LifetimeEq(Lifetime<TF>, Lifetime<TF>),
+    Outlives(Lifetime<TF>, Lifetime<TF>),
 }
 
 /// A mapping of inference variables to instantiations thereof.

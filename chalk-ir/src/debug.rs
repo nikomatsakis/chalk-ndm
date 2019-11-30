@@ -401,7 +401,7 @@ impl<TF: TypeFamily> Debug for Parameter<TF> {
 impl<TF: TypeFamily> Debug for Constraint<TF> {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
         match self {
-            Constraint::LifetimeEq(a, b) => write!(fmt, "{:?} == {:?}", a, b),
+            Constraint::Outlives(a, b) => write!(fmt, "{:?}: {:?}", a, b),
         }
     }
 }

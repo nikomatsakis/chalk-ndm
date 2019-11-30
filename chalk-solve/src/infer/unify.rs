@@ -363,7 +363,11 @@ impl<'t, TF: TypeFamily> Unifier<'t, TF> {
     fn push_lifetime_eq_constraint(&mut self, a: Lifetime<TF>, b: Lifetime<TF>) {
         self.constraints.push(InEnvironment::new(
             self.environment,
-            Constraint::LifetimeEq(a, b),
+            Constraint::Outlives(a.clone(), b.clone()),
+        ));
+        self.constraints.push(InEnvironment::new(
+            self.environment,
+            Constraint::Outlives(b, a),
         ));
     }
 }
