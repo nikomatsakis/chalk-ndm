@@ -11,6 +11,7 @@ pub enum HhGoal<C: Context> {
     And(C::Goal, C::Goal),
     Not(C::Goal),
     Unify(C::Variance, C::Parameter, C::Parameter),
+    CreateOutlivesConstraint(C::Lifetime, C::Lifetime),
     DomainGoal(C::DomainGoal),
 
     /// Indicates something that cannot be proven to be true or false

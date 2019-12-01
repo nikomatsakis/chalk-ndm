@@ -59,6 +59,9 @@ impl<C: Context> Forest<C> {
                     &b,
                     &mut ex_clause,
                 )?,
+                HhGoal::CreateOutlivesConstraint(a, b) => {
+                    infer.create_outlives_constraint(&environment, &a, &b, &mut ex_clause)?
+                }
                 HhGoal::DomainGoal(domain_goal) => {
                     ex_clause
                         .subgoals

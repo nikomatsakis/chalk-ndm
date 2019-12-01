@@ -820,12 +820,19 @@ impl<TF: TypeFamily> DomainGoal<TF> {
 pub enum LeafGoal<TF: TypeFamily> {
     EqGoal(EqGoal<TF>),
     DomainGoal(DomainGoal<TF>),
+    CreateOutlivesConstraintGoal(CreateOutlivesConstraintGoal<TF>),
 }
 
 #[derive(Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Fold)]
 pub struct EqGoal<TF: TypeFamily> {
     pub a: Parameter<TF>,
     pub b: Parameter<TF>,
+}
+
+#[derive(Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Fold)]
+pub struct CreateOutlivesConstraintGoal<TF: TypeFamily> {
+    pub a: Lifetime<TF>,
+    pub b: Lifetime<TF>,
 }
 
 /// Proves that the given projection **normalizes** to the given

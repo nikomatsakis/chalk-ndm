@@ -44,13 +44,11 @@ struct Unifier<'t, TF: TypeFamily> {
     table: &'t mut InferenceTable<TF>,
     environment: &'t Environment<TF>,
     goals: Vec<InEnvironment<DomainGoal<TF>>>,
-    constraints: Vec<InEnvironment<Constraint<TF>>>,
 }
 
 #[derive(Debug)]
 pub(crate) struct UnificationResult<TF: TypeFamily> {
     pub(crate) goals: Vec<InEnvironment<DomainGoal<TF>>>,
-    pub(crate) constraints: Vec<InEnvironment<Constraint<TF>>>,
 }
 
 impl<'t, TF: TypeFamily> Unifier<'t, TF> {
@@ -59,7 +57,6 @@ impl<'t, TF: TypeFamily> Unifier<'t, TF> {
             environment: environment,
             table: table,
             goals: vec![],
-            constraints: vec![],
         }
     }
 
@@ -71,10 +68,7 @@ impl<'t, TF: TypeFamily> Unifier<'t, TF> {
         T: ?Sized + Zip<TF>,
     {
         Zip::zip_with(&mut self, a, b)?;
-        Ok(UnificationResult {
-            goals: self.goals,
-            constraints: self.constraints,
-        })
+        Ok(UnificationResult { goals: self.goals })
     }
 
     /// When we encounter a "sub-unification" problem that is in a distinct
@@ -84,9 +78,8 @@ impl<'t, TF: TypeFamily> Unifier<'t, TF> {
         T: Zip<TF> + Fold<TF>,
     {
         let sub_unifier = Unifier::new(self.table, &self.environment);
-        let UnificationResult { goals, constraints } = sub_unifier.unify(&ty1, &ty2)?;
+        let UnificationResult { goals } = sub_unifier.unify(&ty1, &ty2)?;
         self.goals.extend(goals);
-        self.constraints.extend(constraints);
         Ok(())
     }
 
@@ -361,13 +354,17 @@ impl<'t, TF: TypeFamily> Unifier<'t, TF> {
     }
 
     fn push_lifetime_eq_constraint(&mut self, a: Lifetime<TF>, b: Lifetime<TF>) {
-        self.constraints.push(InEnvironment::new(
+        self.goals.push(InEnvironment::new(
             self.environment,
-            Constraint::Outlives(a.clone(), b.clone()),
+            Outlives {
+                a: b.clone(),
+                b: a.clone(),
+            }
+            .cast(),
         ));
-        self.constraints.push(InEnvironment::new(
+        self.goals.push(InEnvironment::new(
             self.environment,
-            Constraint::Outlives(b, a),
+            Outlives { a, b }.cast(),
         ));
     }
 }

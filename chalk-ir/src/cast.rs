@@ -93,6 +93,12 @@ impl<TF: TypeFamily> CastTo<WhereClause<TF>> for ProjectionEq<TF> {
     }
 }
 
+impl<TF: TypeFamily> CastTo<WhereClause<TF>> for Outlives<TF> {
+    fn cast_to(self) -> WhereClause<TF> {
+        WhereClause::Outlives(self)
+    }
+}
+
 impl<T, TF> CastTo<DomainGoal<TF>> for T
 where
     T: CastTo<WhereClause<TF>>,
@@ -142,6 +148,12 @@ impl<TF: TypeFamily> CastTo<DomainGoal<TF>> for FromEnv<TF> {
 impl<TF: TypeFamily> CastTo<LeafGoal<TF>> for EqGoal<TF> {
     fn cast_to(self) -> LeafGoal<TF> {
         LeafGoal::EqGoal(self)
+    }
+}
+
+impl<TF: TypeFamily> CastTo<LeafGoal<TF>> for CreateOutlivesConstraintGoal<TF> {
+    fn cast_to(self) -> LeafGoal<TF> {
+        LeafGoal::CreateOutlivesConstraintGoal(self)
     }
 }
 

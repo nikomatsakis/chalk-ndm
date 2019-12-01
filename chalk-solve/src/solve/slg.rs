@@ -70,6 +70,7 @@ impl<TF: TypeFamily> context::Context for SlgContext<TF> {
     type Goal = Goal<TF>;
     type BindersGoal = Binders<Box<Goal<TF>>>;
     type Parameter = Parameter<TF>;
+    type Lifetime = Lifetime<TF>;
     type ProgramClause = ProgramClause<TF>;
     type ProgramClauses = Vec<ProgramClause<TF>>;
     type CanonicalConstrainedSubst = Canonical<ConstrainedSubst<TF>>;
@@ -270,6 +271,10 @@ impl<TF: TypeFamily> context::InferenceTable<SlgContext<TF>> for TruncatingInfer
             Goal::Not(g1) => HhGoal::Not(*g1),
             Goal::Leaf(LeafGoal::EqGoal(EqGoal { a, b })) => HhGoal::Unify((), a, b),
             Goal::Leaf(LeafGoal::DomainGoal(domain_goal)) => HhGoal::DomainGoal(domain_goal),
+            Goal::Leaf(LeafGoal::CreateOutlivesConstraintGoal(CreateOutlivesConstraintGoal {
+                a,
+                b,
+            })) => HhGoal::CreateOutlivesConstraint(a, b),
             Goal::CannotProve(()) => HhGoal::CannotProve,
         }
     }
@@ -357,6 +362,20 @@ impl<TF: TypeFamily> context::UnificationOps<SlgContext<TF>> for TruncatingInfer
         let result = self.infer.unify(environment, a, b)?;
         Ok(into_ex_clause(result, ex_clause))
     }
+
+    fn create_outlives_constraint(
+        &mut self,
+        environment: &Environment<TF>,
+        a: &Lifetime<TF>,
+        b: &Lifetime<TF>,
+        ex_clause: &mut ExClause<SlgContext<TF>>,
+    ) -> Fallible<()> {
+        ex_clause.constraints.push(InEnvironment::new(
+            environment,
+            Constraint::Outlives(a.clone(), b.clone()),
+        ));
+        Ok(())
+    }
 }
 
 /// Helper function
@@ -367,7 +386,6 @@ fn into_ex_clause<TF: TypeFamily>(
     ex_clause
         .subgoals
         .extend(result.goals.into_iter().casted().map(Literal::Positive));
-    ex_clause.constraints.extend(result.constraints);
 }
 
 trait SubstitutionExt<TF: TypeFamily> {

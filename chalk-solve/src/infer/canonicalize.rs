@@ -33,7 +33,7 @@ impl<TF: TypeFamily> InferenceTable<TF> {
         T: Fold<TF>,
         T::Result: HasTypeFamily<TypeFamily = TF>,
     {
-        debug!("canonicalize({:#?})", value);
+        debug_heading!("canonicalize({:#?})", value);
         let mut q = Canonicalizer {
             table: self,
             free_vars: Vec::new(),
@@ -93,6 +93,12 @@ impl<'q, TF: TypeFamily> Canonicalizer<'q, TF> {
             .unwrap_or_else(|| {
                 let next_index = self.free_vars.len();
                 self.free_vars.push(free_var);
+                debug!(
+                    "free var #{} = {:?} (universe = {:?})",
+                    next_index,
+                    free_var,
+                    self.table.universe_of_unbound_var(free_var.into_inner()),
+                );
                 next_index
             })
     }

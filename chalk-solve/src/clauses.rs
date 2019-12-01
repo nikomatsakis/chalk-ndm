@@ -8,6 +8,7 @@ use chalk_ir::could_match::CouldMatch;
 use chalk_ir::family::TypeFamily;
 use chalk_ir::*;
 use rustc_hash::FxHashSet;
+use std::marker::PhantomData;
 
 pub mod builder;
 mod env_elaborator;
@@ -240,7 +241,33 @@ fn program_clauses_that_could_match<TF: TypeFamily>(
                 .to_program_clauses(builder);
         }
         DomainGoal::Holds(WhereClause::Outlives(_outlives)) => {
-            // FIXME(ndm)
+            // Create a rule like
+            //
+            // ```
+            // forall<a, b> {
+            //     Outlives(a, b) :- CreateOutlivesConstraint(a, b)
+            // }
+            // ```
+            //
+            // where `CreateOutlivesConstraint` is a special, built-in predicate.
+            let binders = Binders {
+                binders: vec![ParameterKind::Lifetime(()), ParameterKind::Lifetime(())],
+                value: PhantomData::<TF>,
+            };
+            builder.push_binders(&binders, |builder, PhantomData| {
+                let a = builder.placeholders_in_scope()[0].assert_lifetime_ref().clone();
+                let b = builder.placeholders_in_scope()[1].assert_lifetime_ref().clone();
+                builder.push_clause(
+                    Outlives {
+                        a: a.clone(),
+                        b: b.clone(),
+                    },
+                    Some(CreateOutlivesConstraintGoal {
+                        a: a.clone(),
+                        b: b.clone(),
+                    }),
+                );
+            });
         }
         DomainGoal::WellFormed(WellFormed::Trait(trait_predicate)) => {
             db.trait_datum(trait_predicate.trait_id)

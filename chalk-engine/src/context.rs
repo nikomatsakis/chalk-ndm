@@ -104,6 +104,9 @@ pub trait Context: Clone + Debug {
     /// Chalk, either a type or lifetime.
     type Parameter: Debug;
 
+    /// Rust lifetimes -- a specific kind of parameter.
+    type Lifetime: Debug;
+
     /// A rule like `DomainGoal :- Goal`.
     ///
     /// `resolvent_clause` combines a program-clause and a concrete
@@ -298,6 +301,20 @@ pub trait UnificationOps<C: Context> {
         variance: C::Variance,
         a: &C::Parameter,
         b: &C::Parameter,
+        ex_clause: &mut ExClause<C>,
+    ) -> Fallible<()>;
+
+    /// Attempt to create a region constraint that `a: b`. This can
+    /// fail depending on the sort of regions that `a` and `b` are. On
+    /// success, inserts the resulting region constraint into
+    /// `ex_clause` and returns `Ok(())`. On failure, returns
+    /// `Err(Error)`.
+    // Used by: simplify
+    fn create_outlives_constraint(
+        &mut self,
+        environment: &C::Environment,
+        a: &C::Lifetime,
+        b: &C::Lifetime,
         ex_clause: &mut ExClause<C>,
     ) -> Fallible<()>;
 }

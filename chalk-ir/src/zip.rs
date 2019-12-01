@@ -198,6 +198,7 @@ struct_zip!(impl[TF: TypeFamily] Zip<TF> for ProjectionTy<TF> {
 struct_zip!(impl[TF: TypeFamily] Zip<TF> for Normalize<TF> { projection, ty });
 struct_zip!(impl[TF: TypeFamily] Zip<TF> for ProjectionEq<TF> { projection, ty });
 struct_zip!(impl[TF: TypeFamily] Zip<TF> for EqGoal<TF> { a, b });
+struct_zip!(impl[TF: TypeFamily] Zip<TF> for CreateOutlivesConstraintGoal<TF> { a, b });
 struct_zip!(impl[TF: TypeFamily] Zip<TF> for ProgramClauseImplication<TF> {
     consequence,
     conditions
@@ -253,7 +254,7 @@ enum_zip!(impl<TF> for DomainGoal<TF> {
     Compatible,
     DownstreamType
 });
-enum_zip!(impl<TF> for LeafGoal<TF> { DomainGoal, EqGoal });
+enum_zip!(impl<TF> for LeafGoal<TF> { DomainGoal, EqGoal, CreateOutlivesConstraintGoal });
 enum_zip!(impl<TF> for ProgramClause<TF> { Implies, ForAll });
 
 // Annoyingly, Goal cannot use `enum_zip` because some variants have

@@ -274,6 +274,7 @@ impl<TF: TypeFamily> Debug for LeafGoal<TF> {
         match *self {
             LeafGoal::EqGoal(ref eq) => write!(fmt, "{:?}", eq),
             LeafGoal::DomainGoal(ref dom) => write!(fmt, "{:?}", dom),
+            LeafGoal::CreateOutlivesConstraintGoal(ref dom) => write!(fmt, "{:?}", dom),
         }
     }
 }
@@ -281,6 +282,16 @@ impl<TF: TypeFamily> Debug for LeafGoal<TF> {
 impl<TF: TypeFamily> Debug for EqGoal<TF> {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
         write!(fmt, "({:?} = {:?})", self.a, self.b)
+    }
+}
+
+impl<TF: TypeFamily> Debug for CreateOutlivesConstraintGoal<TF> {
+    fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
+        write!(
+            fmt,
+            "CreateOutlivesConstraintGoal({:?}: {:?})",
+            self.a, self.b
+        )
     }
 }
 
