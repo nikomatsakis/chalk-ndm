@@ -255,8 +255,12 @@ fn program_clauses_that_could_match<TF: TypeFamily>(
                 value: PhantomData::<TF>,
             };
             builder.push_binders(&binders, |builder, PhantomData| {
-                let a = builder.placeholders_in_scope()[0].assert_lifetime_ref().clone();
-                let b = builder.placeholders_in_scope()[1].assert_lifetime_ref().clone();
+                let a = builder.placeholders_in_scope()[0]
+                    .assert_lifetime_ref()
+                    .clone();
+                let b = builder.placeholders_in_scope()[1]
+                    .assert_lifetime_ref()
+                    .clone();
                 builder.push_clause(
                     Outlives {
                         a: a.clone(),

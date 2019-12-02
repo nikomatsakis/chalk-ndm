@@ -115,6 +115,7 @@ impl<TF: TypeFamily> Debug for LifetimeData<TF> {
             LifetimeData::BoundVar(depth) => write!(fmt, "'^{}", depth),
             LifetimeData::InferenceVar(var) => write!(fmt, "'{:?}", var),
             LifetimeData::Placeholder(index) => write!(fmt, "'{:?}", index),
+            LifetimeData::Static => write!(fmt, "'static"),
             LifetimeData::Phantom(..) => unreachable!(),
         }
     }

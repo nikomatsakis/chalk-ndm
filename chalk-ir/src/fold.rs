@@ -552,6 +552,7 @@ pub fn super_fold_lifetime<TF: TypeFamily, TTF: TypeFamily>(
         LifetimeData::Placeholder(universe) => {
             folder.fold_free_placeholder_lifetime(*universe, binders)
         }
+        LifetimeData::Static => Ok(LifetimeData::<TTF>::Static.intern()),
         LifetimeData::Phantom(..) => unreachable!(),
     }
 }

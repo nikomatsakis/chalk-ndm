@@ -411,6 +411,7 @@ impl<TF: TypeFamily> Lifetime<TF> {
             LifetimeData::BoundVar(_) => true,
             LifetimeData::InferenceVar(_) => false,
             LifetimeData::Placeholder(_) => false,
+            LifetimeData::Static => false,
             LifetimeData::Phantom(..) => unreachable!(),
         }
     }
@@ -422,6 +423,7 @@ pub enum LifetimeData<TF: TypeFamily> {
     BoundVar(usize),
     InferenceVar(InferenceVar),
     Placeholder(PlaceholderIndex),
+    Static,
     Phantom(Void, PhantomData<TF>),
 }
 

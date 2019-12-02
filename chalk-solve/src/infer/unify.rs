@@ -320,7 +320,19 @@ impl<'t, TF: TypeFamily> Unifier<'t, TF> {
                 self.unify_lifetime_var(a, b, b_var, a, a_idx.ui)
             }
 
-            (&LifetimeData::Placeholder(_), &LifetimeData::Placeholder(_)) => {
+            (&LifetimeData::InferenceVar(a_var), &LifetimeData::Static) => {
+                self.unify_lifetime_var(a, b, a_var, b, UniverseIndex::root())
+            }
+
+            (&LifetimeData::Static, &LifetimeData::InferenceVar(b_var)) => {
+                self.unify_lifetime_var(a, b, b_var, a, UniverseIndex::root())
+            }
+
+            (&LifetimeData::Static, &LifetimeData::Static) => Ok(()),
+
+            (&LifetimeData::Static, &LifetimeData::Placeholder(_))
+            | (&LifetimeData::Placeholder(_), &LifetimeData::Static)
+            | (&LifetimeData::Placeholder(_), &LifetimeData::Placeholder(_)) => {
                 if a != b {
                     Ok(self.push_lifetime_eq_constraint(a.clone(), b.clone()))
                 } else {
