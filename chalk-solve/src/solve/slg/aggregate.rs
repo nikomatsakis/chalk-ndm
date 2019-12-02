@@ -295,23 +295,15 @@ impl<TF: TypeFamily> AntiUnifier<'_, TF> {
 
     fn aggregate_lifetimes(&mut self, l1: &Lifetime<TF>, l2: &Lifetime<TF>) -> Lifetime<TF> {
         match (l1.data(), l2.data()) {
-            (LifetimeData::InferenceVar(_), _) | (_, LifetimeData::InferenceVar(_)) => {
-                self.new_lifetime_variable()
-            }
+            (LifetimeData::Phantom(..), _) | (_, LifetimeData::Phantom(..)) => unreachable!(),
 
-            (LifetimeData::BoundVar(_), _) | (_, LifetimeData::BoundVar(_)) => {
-                self.new_lifetime_variable()
-            }
-
-            (LifetimeData::Placeholder(_), LifetimeData::Placeholder(_)) => {
+            _ => {
                 if l1 == l2 {
                     l1.clone()
                 } else {
                     self.new_lifetime_variable()
                 }
             }
-
-            (LifetimeData::Phantom(..), _) | (_, LifetimeData::Phantom(..)) => unreachable!(),
         }
     }
 
