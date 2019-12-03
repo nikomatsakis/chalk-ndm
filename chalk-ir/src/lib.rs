@@ -412,6 +412,7 @@ impl<TF: TypeFamily> Lifetime<TF> {
             LifetimeData::InferenceVar(_) => false,
             LifetimeData::Placeholder(_) => false,
             LifetimeData::Static => false,
+            LifetimeData::QueryVar(_) => false,
             LifetimeData::Phantom(..) => unreachable!(),
         }
     }
@@ -423,6 +424,7 @@ pub enum LifetimeData<TF: TypeFamily> {
     BoundVar(usize),
     InferenceVar(InferenceVar),
     Placeholder(PlaceholderIndex),
+    QueryVar(QueryVar),
     Static,
     Phantom(Void, PhantomData<TF>),
 }
@@ -430,6 +432,28 @@ pub enum LifetimeData<TF: TypeFamily> {
 impl<TF: TypeFamily> LifetimeData<TF> {
     pub fn intern(self) -> Lifetime<TF> {
         Lifetime::new(self)
+    }
+}
+
+/// A *query variable* is an existential lifetime variable used only
+/// in goals. It indicates some unknown lifetime where we don't want
+/// to find the exact value: we just want to generate outlives constraints
+/// that will be solved by a later pass (such as polonius).
+///
+/// The intention is that, in all goals that the compiler generates,
+/// all the free lifetimes will be query variables.
+///
+/// This is in contrast to inference variables, which can be equated.
+/// I am not totally sure that this distinction makes sense, actually,
+/// but I'm going to run with it for the moment.
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct QueryVar {
+    index: usize,
+}
+
+impl QueryVar {
+    pub fn new(index: usize) -> Self {
+        Self { index }
     }
 }
 

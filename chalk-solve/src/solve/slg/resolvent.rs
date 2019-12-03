@@ -398,6 +398,7 @@ impl<TF: TypeFamily> Zipper<TF> for AnswerSubstitutor<'_, TF> {
             }
 
             (LifetimeData::Static, LifetimeData::Static)
+            | (LifetimeData::QueryVar(_), LifetimeData::QueryVar(_))
             | (LifetimeData::Placeholder(_), LifetimeData::Placeholder(_)) => {
                 assert_eq!(answer, pending);
                 Ok(())
@@ -409,6 +410,7 @@ impl<TF: TypeFamily> Zipper<TF> for AnswerSubstitutor<'_, TF> {
             ),
 
             (LifetimeData::Static, _)
+            | (LifetimeData::QueryVar(_), _)
             | (LifetimeData::BoundVar(_), _)
             | (LifetimeData::Placeholder(_), _) => panic!(
                 "structural mismatch between answer `{:?}` and pending goal `{:?}`",

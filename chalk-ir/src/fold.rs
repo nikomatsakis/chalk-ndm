@@ -553,6 +553,10 @@ pub fn super_fold_lifetime<TF: TypeFamily, TTF: TypeFamily>(
             folder.fold_free_placeholder_lifetime(*universe, binders)
         }
         LifetimeData::Static => Ok(LifetimeData::<TTF>::Static.intern()),
+
+        // FIXME: support folding query variables
+        LifetimeData::QueryVar(i) => Ok(LifetimeData::<TTF>::QueryVar(*i).intern()),
+
         LifetimeData::Phantom(..) => unreachable!(),
     }
 }

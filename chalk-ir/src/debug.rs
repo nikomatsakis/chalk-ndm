@@ -115,6 +115,7 @@ impl<TF: TypeFamily> Debug for LifetimeData<TF> {
             LifetimeData::BoundVar(depth) => write!(fmt, "'^{}", depth),
             LifetimeData::InferenceVar(var) => write!(fmt, "'{:?}", var),
             LifetimeData::Placeholder(index) => write!(fmt, "'{:?}", index),
+            LifetimeData::QueryVar(index) => write!(fmt, "'{:?}", index),
             LifetimeData::Static => write!(fmt, "'static"),
             LifetimeData::Phantom(..) => unreachable!(),
         }
@@ -125,6 +126,12 @@ impl Debug for PlaceholderIndex {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
         let PlaceholderIndex { ui, idx } = self;
         write!(fmt, "!{}_{}", ui.counter, idx)
+    }
+}
+
+impl Debug for QueryVar {
+    fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
+        write!(fmt, "!{}", self.index)
     }
 }
 
