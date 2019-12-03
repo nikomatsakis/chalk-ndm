@@ -1,5 +1,6 @@
 use crate::ast::*;
 use lalrpop_intern::intern;
+use std::str::FromStr;
 
 grammar;
 
@@ -187,6 +188,8 @@ TyWithoutFor: Ty = {
 
 Lifetime: Lifetime = {
     <n:LifetimeId> => Lifetime::Id { name: n },
+    "'static" => Lifetime::Static,
+    <n:r"'[0-9]+"> => Lifetime::QueryVar { index: usize::from_str(&n[1..]).unwrap() },
 };
 
 Parameter: Parameter = {

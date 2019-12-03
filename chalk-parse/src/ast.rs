@@ -177,6 +177,8 @@ pub enum Ty {
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum Lifetime {
     Id { name: Identifier },
+    Static,
+    QueryVar { index: usize },
 }
 
 #[derive(Clone, PartialEq, Eq, Debug)]

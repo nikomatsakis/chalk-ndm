@@ -28,6 +28,13 @@ struct Env<'k> {
     /// Parameter identifiers are used as keys, therefore
     /// all identifiers in an environment must be unique (no shadowing).
     parameter_map: ParameterMap,
+
+    /// A "query var" is only suitable when creating a goal -- it
+    /// refers to existential lifetime variables where we don't want
+    /// to find the value of the lifetime, we just want to generate
+    /// constraints on it. These should not appear in type
+    /// definitions.
+    permit_query_vars: bool,
 }
 
 /// Information about an associated type **declaration** (i.e., an
@@ -205,6 +212,9 @@ impl LowerProgram for Program {
                 type_kinds: &type_kinds,
                 associated_ty_lookups: &associated_ty_lookups,
                 parameter_map: BTreeMap::new(),
+
+                // query vars are only suitable when parsing goals
+                permit_query_vars: false,
             };
 
             match *item {
@@ -1048,6 +1058,15 @@ impl LowerLifetime for Lifetime {
             Lifetime::Id { name } => match env.lookup_lifetime(name)? {
                 LifetimeLookup::Parameter(d) => Ok(chalk_ir::LifetimeData::BoundVar(d).intern()),
             },
+            Lifetime::Static => Ok(chalk_ir::LifetimeData::Static.intern()),
+            Lifetime::QueryVar { index } => {
+                if env.permit_query_vars {
+                    let qv = chalk_ir::QueryVar::new(index);
+                    Ok(chalk_ir::LifetimeData::QueryVar(qv).intern())
+                } else {
+                    Err(RustIrError::QueryVarNotPermittedHere(index))
+                }
+            }
         }
     }
 }
@@ -1228,6 +1247,7 @@ impl LowerGoal<LoweredProgram> for Goal {
             type_kinds: &program.type_kinds,
             associated_ty_lookups: &associated_ty_lookups,
             parameter_map: BTreeMap::new(),
+            permit_query_vars: true,
         };
 
         self.lower(&env)

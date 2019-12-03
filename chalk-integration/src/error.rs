@@ -56,6 +56,7 @@ impl std::error::Error for ChalkError {}
 pub enum RustIrError {
     InvalidTypeName(Identifier),
     InvalidLifetimeName(Identifier),
+    QueryVarNotPermittedHere(usize),
     DuplicateLangItem(LangItem),
     NotTrait(Identifier),
     DuplicateOrShadowedParameters,
@@ -98,6 +99,9 @@ impl std::fmt::Display for RustIrError {
         match self {
             RustIrError::InvalidTypeName(name) => write!(f, "invalid type name `{}`", name),
             RustIrError::InvalidLifetimeName(name) => write!(f, "invalid lifetime name `{}`", name),
+            RustIrError::QueryVarNotPermittedHere(index) => {
+                write!(f, "query variable `'{}` only permitted in goals", index)
+            }
             RustIrError::DuplicateLangItem(item) => write!(f, "duplicate lang item `{:?}`", item),
             RustIrError::NotTrait(name) => write!(
                 f,
