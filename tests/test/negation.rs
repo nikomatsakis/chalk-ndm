@@ -157,3 +157,65 @@ fn negation_free_vars() {
         }
     }
 }
+
+#[test]
+fn negation_assoc_types_cardinality_1() {
+    test! {
+        program {
+            trait Iterator {
+                type Item;
+            }
+        }
+
+        goal {
+            forall<T, U> {
+                if (T: Iterator) {
+                    not {
+                        <T as Iterator>::Item = U
+                    }
+                }
+            }
+        } yields {
+            "No"
+        }
+
+        goal {
+            forall<T, U> {
+                if (T: Iterator; U: Iterator) {
+                    not {
+                        <T as Iterator>::Item = <U as Iterator>::Item
+                    }
+                }
+            }
+        } yields {
+            "No"
+        }
+    }
+}
+
+#[test]
+fn negation_assoc_types_cardinality_2() {
+    test! {
+        program {
+            trait Foo<X> {
+                type Bar;
+            }
+
+
+            struct I32 { }
+            struct U32 { }
+        }
+
+        goal {
+            forall<T> {
+                if (forall<U> { T: Foo<U> }) {
+                    not {
+                        <T as Foo<I32>>::Bar = <T as Foo<U32>>::Bar
+                    }
+                }
+            }
+        } yields {
+            "No"
+        }
+    }
+}
