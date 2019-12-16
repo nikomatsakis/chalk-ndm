@@ -194,6 +194,7 @@ fn negation_assoc_types_cardinality_1() {
 }
 
 #[test]
+#[ignore] // FIXME
 fn negation_assoc_types_cardinality_2() {
     test! {
         program {
