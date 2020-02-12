@@ -32,7 +32,7 @@ pub(super) fn elaborate_env_clauses<TF: TypeFamily>(
 
 struct EnvElaborator<'me, TF: TypeFamily> {
     db: &'me dyn RustIrDatabase<TF>,
-    builder: ClauseBuilder<'me, TF>,
+    builder: ClauseBuilder<'me, TF, TF>,
 }
 
 impl<'me, TF: TypeFamily> EnvElaborator<'me, TF> {

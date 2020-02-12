@@ -1,6 +1,6 @@
 use crate::cast::{Cast, CastTo};
 use crate::RustIrDatabase;
-use chalk_ir::family::{HasTypeFamily, TypeFamily};
+use chalk_ir::family::{HasTypeFamily, TargetTypeFamily, TypeFamily};
 use chalk_ir::fold::Fold;
 use chalk_ir::*;
 use chalk_rust_ir::*;
@@ -10,15 +10,19 @@ use std::marker::PhantomData;
 /// program clauses. It takes ownership of the output vector while it
 /// lasts, and offers methods like `push_clause` and so forth to
 /// append to it.
-pub struct ClauseBuilder<'me, TF: TypeFamily> {
+pub struct ClauseBuilder<'me, TF: TypeFamily, TTF: TargetTypeFamily<TF>> {
     pub db: &'me dyn RustIrDatabase<TF>,
-    clauses: &'me mut Vec<ProgramClause<TF>>,
+    clauses: &'me mut Vec<ProgramClause<TTF>>,
     binders: Vec<ParameterKind<()>>,
-    parameters: Vec<Parameter<TF>>,
+    parameters: Vec<Parameter<TTF>>,
 }
 
-impl<'me, TF: TypeFamily> ClauseBuilder<'me, TF> {
-    pub fn new(db: &'me dyn RustIrDatabase<TF>, clauses: &'me mut Vec<ProgramClause<TF>>) -> Self {
+impl<'me, TF, TTF> ClauseBuilder<'me, TF, TTF>
+where
+    TF: TypeFamily,
+    TTF: TargetTypeFamily<TF>,
+{
+    pub fn new(db: &'me dyn RustIrDatabase<TF>, clauses: &'me mut Vec<ProgramClause<TTF>>) -> Self {
         Self {
             db,
             clauses,

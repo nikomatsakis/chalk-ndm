@@ -44,7 +44,7 @@ pub mod program_clauses;
 /// }
 /// ```
 pub fn push_auto_trait_impls<TF: TypeFamily>(
-    builder: &mut ClauseBuilder<'_, TF>,
+    builder: &mut ClauseBuilder<'_, TF, TF>,
     auto_trait_id: TraitId<TF>,
     struct_id: StructId<TF>,
 ) {
@@ -292,7 +292,7 @@ fn program_clauses_that_could_match<TF: TypeFamily>(
 /// }
 /// ```
 fn push_program_clauses_for_associated_type_values_in_impls_of<TF: TypeFamily>(
-    builder: &mut ClauseBuilder<'_, TF>,
+    builder: &mut ClauseBuilder<'_, TF, TF>,
     trait_id: TraitId<TF>,
     trait_parameters: &[Parameter<TF>],
 ) {
@@ -332,7 +332,7 @@ fn push_program_clauses_for_associated_type_values_in_impls_of<TF: TypeFamily>(
 /// Note that the type `T` must not be an unbound inference variable;
 /// earlier parts of the logic should "flounder" in that case.
 fn match_ty<TF: TypeFamily>(
-    builder: &mut ClauseBuilder<'_, TF>,
+    builder: &mut ClauseBuilder<'_, TF, TF>,
     environment: &Environment<TF>,
     ty: &Ty<TF>,
 ) {
@@ -354,7 +354,7 @@ fn match_ty<TF: TypeFamily>(
     }
 }
 
-fn match_type_name<TF: TypeFamily>(builder: &mut ClauseBuilder<'_, TF>, name: TypeName<TF>) {
+fn match_type_name<TF: TypeFamily>(builder: &mut ClauseBuilder<'_, TF, TF>, name: TypeName<TF>) {
     match name {
         TypeName::Struct(struct_id) => match_struct(builder, struct_id),
         TypeName::Error => {}
@@ -365,7 +365,7 @@ fn match_type_name<TF: TypeFamily>(builder: &mut ClauseBuilder<'_, TF>, name: Ty
     }
 }
 
-fn match_struct<TF: TypeFamily>(builder: &mut ClauseBuilder<'_, TF>, struct_id: StructId<TF>) {
+fn match_struct<TF: TypeFamily>(builder: &mut ClauseBuilder<'_, TF, TF>, struct_id: StructId<TF>) {
     builder
         .db
         .struct_datum(struct_id)
