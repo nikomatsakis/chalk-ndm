@@ -142,9 +142,9 @@ where
                 // and then map `root_var` to a fresh index that is
                 // unique to this quantification.
                 let free_var = ParameterKind::Ty(self.table.unify.find(var));
-                let position = self.add(free_var);
-                debug!("not yet unified: position={:?}", position);
-                Ok(TyData::BoundVar(position.shifted_in(binders)).intern(self.interner()))
+                let bound_var = BoundVar::new(self.add(free_var));
+                debug!("not yet unified: position={:?}", bound_var);
+                Ok(TyData::BoundVar(bound_var.shifted_in(binders)).intern(self.interner()))
             }
         }
     }
@@ -167,9 +167,9 @@ where
             }
             None => {
                 let free_var = ParameterKind::Lifetime(self.table.unify.find(var));
-                let position = self.add(free_var);
-                debug!("not yet unified: position={:?}", position);
-                Ok(LifetimeData::BoundVar(position.shifted_in(binders)).intern(self.interner()))
+                let bound_var = BoundVar::new(self.add(free_var));
+                debug!("not yet unified: position={:?}", bound_var);
+                Ok(LifetimeData::BoundVar(bound_var.shifted_in(binders)).intern(self.interner()))
             }
         }
     }
