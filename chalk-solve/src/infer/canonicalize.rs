@@ -84,15 +84,17 @@ impl<'q, I: Interner> Canonicalizer<'q, I> {
             .collect()
     }
 
-    fn add(&mut self, free_var: ParameterEnaVariable<I>) -> usize {
-        self.free_vars
-            .iter()
-            .position(|&v| v == free_var)
-            .unwrap_or_else(|| {
-                let next_index = self.free_vars.len();
-                self.free_vars.push(free_var);
-                next_index
-            })
+    fn add(&mut self, free_var: ParameterEnaVariable<I>) -> DebruijnIndex {
+        DebruijnIndex::from(
+            self.free_vars
+                .iter()
+                .position(|&v| v == free_var)
+                .unwrap_or_else(|| {
+                    let next_index = self.free_vars.len();
+                    self.free_vars.push(free_var);
+                    next_index
+                }),
+        )
     }
 }
 
@@ -142,7 +144,7 @@ where
                 let free_var = ParameterKind::Ty(self.table.unify.find(var));
                 let position = self.add(free_var);
                 debug!("not yet unified: position={:?}", position);
-                Ok(TyData::BoundVar(position + binders).intern(self.interner()))
+                Ok(TyData::BoundVar(position.shifted_in(binders)).intern(self.interner()))
             }
         }
     }
@@ -167,7 +169,7 @@ where
                 let free_var = ParameterKind::Lifetime(self.table.unify.find(var));
                 let position = self.add(free_var);
                 debug!("not yet unified: position={:?}", position);
-                Ok(LifetimeData::BoundVar(position + binders).intern(self.interner()))
+                Ok(LifetimeData::BoundVar(position.shifted_in(binders)).intern(self.interner()))
             }
         }
     }
