@@ -44,12 +44,14 @@ impl<'me, I: Interner> EnvElaborator<'me, I> {
     }
 
     fn visit_alias_ty(&mut self, alias_ty: &AliasTy<I>) {
+        debug!("EnvElaborator::visit_alias_ty(alias_ty={:?})", alias_ty);
         self.db
             .associated_ty_data(alias_ty.associated_ty_id)
             .to_program_clauses(&mut self.builder);
     }
 
     fn visit_ty(&mut self, ty: &Ty<I>) {
+        debug!("EnvElaborator::visit_ty(ty={:?})", ty);
         match ty.data() {
             TyData::Apply(application_ty) => {
                 match_type_name(&mut self.builder, application_ty.name)
@@ -69,6 +71,7 @@ impl<'me, I: Interner> EnvElaborator<'me, I> {
     }
 
     fn visit_from_env(&mut self, from_env: &FromEnv<I>) {
+        debug!("EnvElaborator::visit_from_env(from_env={:?})", from_env);
         match from_env {
             FromEnv::Trait(trait_ref) => {
                 let trait_datum = self.db.trait_datum(trait_ref.trait_id);
@@ -89,6 +92,10 @@ impl<'me, I: Interner> EnvElaborator<'me, I> {
     }
 
     fn visit_domain_goal(&mut self, domain_goal: &DomainGoal<I>) {
+        debug!(
+            "EnvElaborator::visit_domain_goal(domain_goal={:?})",
+            domain_goal
+        );
         match domain_goal {
             DomainGoal::FromEnv(from_env) => self.visit_from_env(from_env),
             _ => {}
@@ -96,6 +103,7 @@ impl<'me, I: Interner> EnvElaborator<'me, I> {
     }
 
     fn visit_program_clause(&mut self, clause: &ProgramClause<I>) {
+        debug!("visit_program_clause(clause={:?})", clause);
         match clause {
             ProgramClause::Implies(clause) => self.visit_domain_goal(&clause.consequence),
             ProgramClause::ForAll(clause) => self.visit_domain_goal(&clause.value.consequence),
