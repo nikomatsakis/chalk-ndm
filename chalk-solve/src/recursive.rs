@@ -146,18 +146,6 @@ impl<'me, I: Interner> Solver<'me, I> {
                 return *minimums;
             }
 
-            let old_answer = &self.context.search_graph[dfn].solution;
-            let old_prio = self.context.search_graph[dfn].solution_priority;
-
-            let (current_answer, current_prio) = combine::with_priorities_for_goal(
-                self.program.interner(),
-                &canonical_goal.canonical.value.goal,
-                old_answer.clone(),
-                old_prio,
-                current_answer,
-                current_prio,
-            );
-
             // Some of our subgoals depended on us. We need to re-run
             // with the current answer.
             if self.context.search_graph[dfn].solution == current_answer {
